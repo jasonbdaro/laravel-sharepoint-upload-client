@@ -272,6 +272,29 @@ class Client {
         }
 	}
 
+    public function deleteFile($refresh_token, $file_path, $file_name)
+    {
+		$guzzle = $this->createGuzzleClient();
+        try {
+            $parsed_url = parse_url("{$this->site_url}/{$this->doc_library}/{$file_path}/{$file_name}", PHP_URL_PATH);
+            $guzzle->request(
+                'POST',
+                "{$this->site_url}/_api/web/GetFileByServerRelativeUrl('{$parsed_url}')",
+                [
+                    'headers' => [
+                        'Authorization' => 'Bearer ' . $this->getAccessToken( $refresh_token ),
+                        'Content-Type' => 'application/json;odata=verbose',
+                        'Accept' => 'application/json;odata=verbose',
+                        'X-HTTP-Method' => 'DELETE',
+                        'IF-MATCH' => '*',
+                    ],
+                ],
+            );
+        } catch (\Exception $e) {
+            return $e->getMessage();
+        }
+    }
+
 	/**
 	 * Upload file to relative path on server given refresh token
 	 *
