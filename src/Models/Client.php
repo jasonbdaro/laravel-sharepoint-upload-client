@@ -28,6 +28,11 @@ class Client {
 	 */
 	protected $redirect_uri;
 
+    /**
+     * @var string
+     */
+    protected $doc_library = 'Shared Documents';
+
 	/**
 	 * @var Application
 	 */
@@ -40,6 +45,11 @@ class Client {
 		$this->redirect_uri = $redirect_uri;
 		$this->app = Application::getInstance();
 	}
+
+    public function setDocLibrary($doc_library)
+    {
+        $this->doc_library = $doc_library;
+    }
 
 	/**
 	 * Construct URL, which will request for user consent with List.Write scope
@@ -187,25 +197,113 @@ class Client {
 	 * @return bool True on success upload
 	 */
 	public function uploadFile( $refresh_token, $file_path, $file_name, $file_stream ) {
+        $this->createFolder($refresh_token, $file_path, function () use ($refresh_token, $file_path, $file_name, $file_stream) {
+            $start_time = ( new \DateTime() )->sub( new \DateInterval( 'P1M' ) ); // Subtract one minute due to different server time sync
+            $parsed_url = parse_url("{$this->site_url}/{$this->doc_library}/{$file_path}", PHP_URL_PATH);
+            $guzzle = $this->createGuzzleClient();
+            $response = $guzzle->request(
+                'POST',
+                "{$this->site_url}/_api/web/GetFolderByServerRelativeUrl('{$parsed_url}')/Files/add(url='{$file_name}',overwrite=true)",
+                [
+                    'headers' => [
+                        'Authorization' => 'Bearer ' . $this->getAccessToken( $refresh_token ),
+                        'accept' => 'application/json; odata=verbose'
+                    ],
+                    'body' => $file_stream
+                ]
+            );
+
+            $response_data = json_decode( $response->getBody() );
+            $last_modified_date = new \DateTime( $response_data->d->TimeLastModified );
+
+            if( $last_modified_date > $start_time ) {
+                return true;
+            }
+            return false;
+        });
+	}
+
+    public function createFolder($refresh_token, $folderPath, $closure)
+    {
+        $folders = explode('/', $folderPath);
+        $create_folder = $this->_createFolder($refresh_token, '', $folders);
+        if ($create_folder == 'success') {
+            return $closure($create_folder);
+        }
+        if ($create_folder == 'error') {
+            return false;
+        }
+    }
+
+	private function _createFolder( $refresh_token, $initialPath, $folderArray ) {
+        if (empty($folderArray)) {
+            return 'success';
+        }
+		$guzzle = $this->createGuzzleClient();
+        $finalPath = '';
+        if (empty($initialPath)) {
+            $finalPath = $folderArray[0];
+        } else {
+            $finalPath = ltrim("{$initialPath}/{$folderArray[0]}", "/");
+        }
+        try {
+            $guzzle->request(
+                'POST',
+                "{$this->site_url}/_api/web/folders",
+                [
+                    'headers' => [
+                        'Authorization' => 'Bearer ' . $this->getAccessToken( $refresh_token ),
+                        'Content-Type' => 'application/json;odata=verbose',
+                        'Accept' => 'application/json;odata=verbose',
+                    ],
+                    'json' => [
+                        '__metadata' => [
+                            'type' => 'SP.Folder',
+                        ],
+                        'ServerRelativeUrl' => "{$this->site_url}/{$this->doc_library}/{$finalPath}",
+                    ],
+                ],
+            );
+            $initialPath = "{$initialPath}/{$folderArray[0]}";
+            array_shift($folderArray);
+            return $this->_createFolder($refresh_token, $initialPath, $folderArray);
+        } catch (\Exception $e) {
+            return 'error';
+        }
+	}
+
+	/**
+	 * Upload file to relative path on server given refresh token
+	 *
+	 * @param string $refresh_token
+	 * @param string $file_path
+	 * @param string $file_name
+	 * @param StreamInterface $file_stream
+	 *
+	 * @return bool True on success upload
+	 */
+	public function getFormDigest($refresh_token) {
 
 		$start_time = ( new \DateTime() )->sub( new \DateInterval( 'P1M' ) ); // Subtract one minute due to different server time sync
-		
+
 		$guzzle = $this->createGuzzleClient();
 		$response = $guzzle->request(
 			'POST',
-			"{$this->site_url}/_api/web/GetFolderByServerRelativeUrl('{$file_path}')/Files/add(url='{$file_name}',overwrite=true)",
+			"{$this->site_url}/_api/contextinfo",
 			[
 				'headers' => [
 					'Authorization' => 'Bearer ' . $this->getAccessToken( $refresh_token ),
-					'accept' => 'application/json; odata=verbose'
+					'accept' => 'application/json; odata=verbose',
+                    'content-type' => 'application/json;odata=verbose',
+                    // 'X-RequestDigest' => '123',
 				],
-				'body' => $file_stream
 			]
 		);
 
 		$response_data = json_decode( $response->getBody() );
+        return $response_data;
 		$last_modified_date = new \DateTime( $response_data->d->TimeLastModified );
-		
+
 		if( $last_modified_date > $start_time ) {
 			return true;
 		}
