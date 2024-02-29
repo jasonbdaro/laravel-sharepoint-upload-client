@@ -1,13 +1,13 @@
 {
-    "name": "jakub-klapka/laravel-sharepoint-upload-client",
+    "name": "jasonbdaro/laravel-sharepoint-upload-client",
     "description": "Simple library for file uploading to Microsoft Sharepoint site",
     "keywords": ["sharepoint","microsoft","upload","oauth"],
-    "homepage": "https://github.com/jakub-klapka/laravel-sharepoint-upload-client",
+    "homepage": "https://github.com/jasonbdaro/laravel-sharepoint-upload-client",
     "license": "MIT",
     "authors": [
         {
-            "name": "Jakub Klapka",
-            "email": "klapka@lumiart.cz"
+            "name": "Jason Daro",
+            "email": "jasonbdaro@gmail.com"
         }
     ],
     "require": {
