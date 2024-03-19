@@ -334,4 +334,44 @@ class Client {
 
 	}
 
+	public function getInfo( $refresh_token, $url = null ) {
+		$guzzle = $this->createGuzzleClient();
+        try {
+            $response = $guzzle->request(
+                'GET',
+                $url ?? "{$this->site_url}/_api/web/GetFolderByServerRelativeUrl('{$this->doc_library}')",
+                [
+                    'headers' => [
+                        'Authorization' => 'Bearer ' . $this->getAccessToken( $refresh_token ),
+                        'Content-Type' => 'application/json;odata=verbose',
+                        'Accept' => 'application/json;odata=verbose',
+                    ],
+                ],
+            );
+            return json_decode( $response->getBody() );
+        } catch (\Exception $e) {
+            return $e->getMessage();
+        }
+	}
+
+	public function downloadFile( $refresh_token, $url = null ) {
+		$guzzle = $this->createGuzzleClient();
+        try {
+            $response = $guzzle->request(
+                'GET',
+                $url,
+                [
+                    'headers' => [
+                        'Authorization' => 'Bearer ' . $this->getAccessToken( $refresh_token ),
+                        'Content-Type' => 'application/json;odata=verbose',
+                        'Accept' => 'application/json;odata=verbose',
+                    ],
+                ],
+            );
+            return $response->getBody();
+        } catch (\Exception $e) {
+            return $e->getMessage();
+        }
+	}
+
 }
