@@ -354,12 +354,13 @@ class Client {
         }
 	}
 
-	public function downloadFile( $refresh_token, $url = null ) {
+	public function downloadFile( $refresh_token, $filepath, $filename ) {
 		$guzzle = $this->createGuzzleClient();
         try {
+            $value = '$value';
             $response = $guzzle->request(
                 'GET',
-                $url,
+                "{$this->site_url}/_api/web/GetFolderByServerRelativeUrl('{$filepath}')/files('{$filename}')/{$value}",
                 [
                     'headers' => [
                         'Authorization' => 'Bearer ' . $this->getAccessToken( $refresh_token ),
